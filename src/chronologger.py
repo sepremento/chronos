@@ -20,6 +20,7 @@ class ChronoTask:
 
     def set_description(self, description):
         self._description = description.lower()
+        return f'Успешно изменили описание задачи: {description}'
 
     def get_description(self):
         return self._description

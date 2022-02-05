@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/home/boris/anaconda3/bin/python
 import os
 import re
 from time import sleep
@@ -18,6 +18,7 @@ STOP_TASK_REGEX = '^\.\s*(стоп|stop|с|s)(.*)'
 ADD_TAG_REGEX = '^\.\s*(тег добавить|tag add|тд|ta)\s*(\d*)(.*)'
 DEL_TAG_REGEX = '^\.\s*(тег удалить|tag delete|ту|td)\s*(\d*)(.*)'
 LIST_TASKS_REGEX = '^\.\s*(п|l)'
+EDIT_DESC_REGEX = '^\.\s*(описание|о|description|m)\s*(\d*)(.*)'
 
 def show_and_delete_notification(chat_id, msg_text):
     notification_msg = app.send_message(chat_id, msg_text)
@@ -47,7 +48,7 @@ def start_task(client, message):
     chat_id = get_chat_id_and_delete_message(message)
     task_match = re.match(ADD_TASK_REGEX, message.text, re.I)
     task_description = task_match.group(2).strip()
-    tags_list = []
+    task_tags = []
     if task_description_has_tags(task_description):
         splitter = get_tag_splitter(task_description)
         task_description, task_tags = task_description.split(splitter)
@@ -102,6 +103,19 @@ def add_tag(client, message):
     result = logger.get_tasks(task_id)
     if not isinstance(result, str):
         result = result.remove_tag(tag)
+    show_and_delete_notification(chat_id, result)
+
+@app.on_message(filters.me & filters.regex(EDIT_DESC_REGEX, re.I))
+def edit_description(client, message):
+    chat_id = get_chat_id_and_delete_message(message)
+    task_match = re.match(EDIT_DESC_REGEX, message.text, re.I)
+    task_id = task_match.group(2).strip() or 0
+    description = task_match.group(3).strip() or ''
+    result = logger.get_tasks(task_id)
+    if not isinstance(result, str):
+        if description == '':
+            description = result.get_description()
+        result = result.set_description(description)
     show_and_delete_notification(chat_id, result)
 
 
