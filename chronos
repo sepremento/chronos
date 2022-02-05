@@ -48,7 +48,7 @@ def start_task(client, message):
     chat_id = get_chat_id_and_delete_message(message)
     task_match = re.match(ADD_TASK_REGEX, message.text, re.I)
     task_description = task_match.group(2).strip()
-    tags_list = []
+    task_tags = []
     if task_description_has_tags(task_description):
         splitter = get_tag_splitter(task_description)
         task_description, task_tags = task_description.split(splitter)
