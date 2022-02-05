@@ -1,0 +1,109 @@
+#!/usr/bin/python
+import os
+import re
+from time import sleep
+from pyrogram import Client
+from pyrogram import filters
+from src.chronologger import ChronoTask, ChronoLogger
+
+app_id=os.environ['TELEGRAM_API_ID']
+api_hash=os.environ['TELEGRAM_API_HASH']
+
+app = Client('my_account', app_id, api_hash)
+logger = ChronoLogger()
+
+ADD_TASK_REGEX = '^\.\s*(добавить|д|add|a)(.*)'
+DEL_TASK_REGEX = '^\.\s*(удалить|delete|у|d)(.*)'
+STOP_TASK_REGEX = '^\.\s*(стоп|stop|с|s)(.*)'
+ADD_TAG_REGEX = '^\.\s*(тег добавить|tag add|тд|ta)\s*(\d*)(.*)'
+DEL_TAG_REGEX = '^\.\s*(тег удалить|tag delete|ту|td)\s*(\d*)(.*)'
+LIST_TASKS_REGEX = '^\.\s*(п|l)'
+
+def show_and_delete_notification(chat_id, msg_text):
+    notification_msg = app.send_message(chat_id, msg_text)
+    sleep(5)
+    app.delete_messages(chat_id, notification_msg.message_id)
+
+
+def get_chat_id_and_delete_message(message):
+    app.delete_messages(message.chat.id, message.message_id)
+    return message.chat.id
+
+
+def task_description_has_tags(task_description):
+    task_description = task_description.lower()
+    return ('tags:' in task_description) or ('теги:' in task_description)
+
+
+def get_tag_splitter(task_description):
+    if 'tags:' in task_description.lower():
+        return 'tags:'
+    if 'теги:' in task_description.lower():
+        return 'теги:'
+
+
+@app.on_message(filters.me & filters.regex(ADD_TASK_REGEX, re.I))
+def start_task(client, message):
+    chat_id = get_chat_id_and_delete_message(message)
+    task_match = re.match(ADD_TASK_REGEX, message.text, re.I)
+    task_description = task_match.group(2).strip()
+    tags_list = []
+    if task_description_has_tags(task_description):
+        splitter = get_tag_splitter(task_description)
+        task_description, task_tags = task_description.split(splitter)
+    task = ChronoTask(task_description, task_tags)
+    result = logger.add_task(task)
+    show_and_delete_notification(chat_id, result)
+
+
+@app.on_message(filters.me & filters.regex(STOP_TASK_REGEX, re.I))
+def stop_task(client, message):
+    chat_id = get_chat_id_and_delete_message(message)
+    task_match = re.match(STOP_TASK_REGEX, message.text, re.I)
+    task_id = task_match.group(2).strip() or 0
+    result = logger.finish_task(task_id)
+    show_and_delete_notification(chat_id, result)
+
+
+@app.on_message(filters.me & filters.regex(DEL_TASK_REGEX, re.I))
+def del_task(client, message):
+    chat_id = get_chat_id_and_delete_message(message)
+    task_match = re.match(DEL_TASK_REGEX, message.text, re.I)
+    task_id = task_match.group(2).strip() or 0
+    result = logger.remove_task(task_id)
+    show_and_delete_notification(chat_id, result)
+
+
+@app.on_message(filters.me & filters.regex(LIST_TASKS_REGEX, re.I))
+def list_tasks(client, message):
+    chat_id = get_chat_id_and_delete_message(message)
+    result = str(logger)
+    show_and_delete_notification(chat_id, result)
+
+
+@app.on_message(filters.me & filters.regex(ADD_TAG_REGEX, re.I))
+def add_tag(client, message):
+    chat_id = get_chat_id_and_delete_message(message)
+    task_match = re.match(ADD_TAG_REGEX, message.text, re.I)
+    task_id = task_match.group(2).strip() or 0
+    tag = task_match.group(3).strip() or ''
+    result = logger.get_tasks(task_id)
+    if not isinstance(result, str):
+        result = result.add_tag(tag)
+    show_and_delete_notification(chat_id, result)
+
+
+@app.on_message(filters.me & filters.regex(DEL_TAG_REGEX, re.I))
+def add_tag(client, message):
+    chat_id = get_chat_id_and_delete_message(message)
+    task_match = re.match(DEL_TAG_REGEX, message.text, re.I)
+    task_id = task_match.group(2).strip() or 0
+    tag = task_match.group(3).strip() or ''
+    result = logger.get_tasks(task_id)
+    if not isinstance(result, str):
+        result = result.remove_tag(tag)
+    show_and_delete_notification(chat_id, result)
+
+
+if __name__ == '__main__':
+    app.run()
