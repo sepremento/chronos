@@ -7,7 +7,7 @@ FILEPATH = Path(__file__).absolute().parent.parent
 CUR_MONTH = datetime.today().date().replace(day=1).strftime('%Y-%m')
 
 class ChronoTask:
-    def __init__(self, description, tags=None, start_time=None, stop_time=None):
+    def __init__(self, description='', tags=None, start_time=None, stop_time=None):
         self._description = description.lower()
         self.set_start_time(start_time)
         self._stop_time = None
