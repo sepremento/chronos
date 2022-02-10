@@ -12,7 +12,7 @@ api_hash=os.environ['TELEGRAM_API_HASH']
 app = Client('my_account', app_id, api_hash)
 logger = ChronoLogger()
 
-ADD_TASK_REGEX = '^\.\s*(добавить|д|add|a)(.*)'
+ADD_TASK_REGEX = '^\.\s*(.*)\.(.*)'
 DEL_TASK_REGEX = '^\.\s*(удалить|delete|у|d)(.*)'
 STOP_TASK_REGEX = '^\.\s*(стоп|stop|с|s)(.*)'
 ADD_TAG_REGEX = '^\.\s*(тег добавить|tag add|тд|ta)\s*(\d*)(.*)'
@@ -31,27 +31,12 @@ def get_chat_id_and_delete_message(message):
     return message.chat.id
 
 
-def task_description_has_tags(task_description):
-    task_description = task_description.lower()
-    return ('tags:' in task_description) or ('теги:' in task_description)
-
-
-def get_tag_splitter(task_description):
-    if 'tags:' in task_description.lower():
-        return 'tags:'
-    if 'теги:' in task_description.lower():
-        return 'теги:'
-
-
 @app.on_message(filters.me & filters.regex(ADD_TASK_REGEX, re.I))
 def start_task(client, message):
     chat_id = get_chat_id_and_delete_message(message)
     task_match = re.match(ADD_TASK_REGEX, message.text, re.I)
-    task_description = task_match.group(2).strip()
-    task_tags = []
-    if task_description_has_tags(task_description):
-        splitter = get_tag_splitter(task_description)
-        task_description, task_tags = task_description.split(splitter)
+    task_description = task_match.group(1).strip()
+    task_tags = task_match.group(2).strip() or None
     task = ChronoTask(task_description, task_tags)
     result = logger.add_task(task)
     show_and_delete_notification(chat_id, result)
