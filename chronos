@@ -12,13 +12,14 @@ api_hash=os.environ['TELEGRAM_API_HASH']
 app = Client('my_account', app_id, api_hash)
 logger = ChronoLogger()
 
-ADD_TASK_REGEX = '^\.\s*(.*)\.(.*)'
+ADD_TASK_REGEX = '^\.\s*([^\.]*)\.([^\.]*)\.?([^\.]*)\.?([^\.]*)'
 DEL_TASK_REGEX = '^\.\s*(удалить|delete|у|d)(.*)'
 STOP_TASK_REGEX = '^\.\s*(стоп|stop|с|s)(.*)'
 ADD_TAG_REGEX = '^\.\s*(тег добавить|tag add|тд|ta)\s*(\d*)(.*)'
 DEL_TAG_REGEX = '^\.\s*(тег удалить|tag delete|ту|td)\s*(\d*)(.*)'
 LIST_TASKS_REGEX = '^\.\s*$'
 EDIT_DESC_REGEX = '^\.\s*(описание|о|description|m)\s*(\d*)(.*)'
+EDIT_TIME_REGEX = r'^\.\s*(в\b|t\b)\s*(\d?\b)\s*([^\,]*),?(.*)'
 
 def show_and_delete_notification(chat_id, msg_text):
     notification_msg = app.send_message(chat_id, msg_text)
@@ -31,18 +32,25 @@ def get_chat_id_and_delete_message(message):
     return message.chat.id
 
 
-@app.on_message(filters.me & filters.regex(ADD_TASK_REGEX, re.I))
+def filter_me_chat_and_regex(regex: str):
+    return filters.me & filters.chat('me') & filters.regex(regex, re.I)
+
+
+@app.on_message(filter_me_chat_and_regex(ADD_TASK_REGEX))
 def start_task(client, message):
     chat_id = get_chat_id_and_delete_message(message)
     task_match = re.match(ADD_TASK_REGEX, message.text, re.I)
     task_description = task_match.group(1).strip()
     task_tags = task_match.group(2).strip() or None
-    task = ChronoTask(task_description, task_tags)
+    task_start_time = task_match.group(3).strip() or None
+    task_stop_time = task_match.group(4).strip() or None
+    task = ChronoTask(task_description, task_tags, task_start_time,
+                      task_stop_time)
     result = logger.add_task(task)
     show_and_delete_notification(chat_id, result)
 
 
-@app.on_message(filters.me & filters.regex(STOP_TASK_REGEX, re.I))
+@app.on_message(filter_me_chat_and_regex(STOP_TASK_REGEX))
 def stop_task(client, message):
     chat_id = get_chat_id_and_delete_message(message)
     task_match = re.match(STOP_TASK_REGEX, message.text, re.I)
@@ -51,7 +59,7 @@ def stop_task(client, message):
     show_and_delete_notification(chat_id, result)
 
 
-@app.on_message(filters.me & filters.regex(DEL_TASK_REGEX, re.I))
+@app.on_message(filter_me_chat_and_regex(DEL_TASK_REGEX))
 def del_task(client, message):
     chat_id = get_chat_id_and_delete_message(message)
     task_match = re.match(DEL_TASK_REGEX, message.text, re.I)
@@ -60,14 +68,14 @@ def del_task(client, message):
     show_and_delete_notification(chat_id, result)
 
 
-@app.on_message(filters.me & filters.regex(LIST_TASKS_REGEX, re.I))
+@app.on_message(filter_me_chat_and_regex(LIST_TASKS_REGEX))
 def list_tasks(client, message):
     chat_id = get_chat_id_and_delete_message(message)
     result = str(logger)
     show_and_delete_notification(chat_id, result)
 
 
-@app.on_message(filters.me & filters.regex(ADD_TAG_REGEX, re.I))
+@app.on_message(filter_me_chat_and_regex(ADD_TAG_REGEX))
 def add_tag(client, message):
     chat_id = get_chat_id_and_delete_message(message)
     task_match = re.match(ADD_TAG_REGEX, message.text, re.I)
@@ -79,7 +87,7 @@ def add_tag(client, message):
     show_and_delete_notification(chat_id, result)
 
 
-@app.on_message(filters.me & filters.regex(DEL_TAG_REGEX, re.I))
+@app.on_message(filter_me_chat_and_regex(DEL_TAG_REGEX))
 def add_tag(client, message):
     chat_id = get_chat_id_and_delete_message(message)
     task_match = re.match(DEL_TAG_REGEX, message.text, re.I)
@@ -90,7 +98,8 @@ def add_tag(client, message):
         result = result.remove_tag(tag)
     show_and_delete_notification(chat_id, result)
 
-@app.on_message(filters.me & filters.regex(EDIT_DESC_REGEX, re.I))
+
+@app.on_message(filter_me_chat_and_regex(EDIT_DESC_REGEX))
 def edit_description(client, message):
     chat_id = get_chat_id_and_delete_message(message)
     task_match = re.match(EDIT_DESC_REGEX, message.text, re.I)
@@ -102,6 +111,23 @@ def edit_description(client, message):
             description = result.get_description()
         result = result.set_description(description)
     show_and_delete_notification(chat_id, result)
+
+
+@app.on_message(filter_me_chat_and_regex(EDIT_TIME_REGEX))
+def edit_start_and_stop_time(client, message):
+    chat_id = get_chat_id_and_delete_message(message)
+    task_match = re.match(EDIT_TIME_REGEX, message.text, re.I)
+    task_id = task_match.group(2).strip() or 0
+    start_time = task_match.group(3).strip() or None
+    stop_time = task_match.group(4).strip() or None
+    result = logger.get_tasks(task_id)
+    if not isinstance(result, str):
+        if start_time is not None:
+            result = result.set_start_time(start_time)
+            show_and_delete_notification(chat_id, result)
+        if stop_time is not None:
+            result = result.set_stop_time(stop_time)
+            show_and_delete_notification(chat_id, result)
 
 
 if __name__ == '__main__':
