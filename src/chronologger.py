@@ -5,12 +5,13 @@ from pathlib import Path
 
 FILEPATH = Path(__file__).absolute().parent.parent
 CUR_MONTH = datetime.today().date().replace(day=1).strftime('%Y-%m')
+TIME_FORMATS = ['%H:%M', '%X', '%x %X']
 
 class ChronoTask:
     def __init__(self, description='', tags=None, start_time=None, stop_time=None):
         self._description = description.lower()
         self.set_start_time(start_time)
-        self._stop_time = None
+        self.set_stop_time(stop_time)
         self._tags = self._set_tags(tags)
 
     def __repr__(self):
@@ -28,6 +29,12 @@ class ChronoTask:
     def get_tags(self):
         return self._tags
 
+    def get_start_time(self):
+        return self._start_time
+
+    def get_stop_time(self):
+        return self._stop_time
+
     def add_tag(self, tag):
         if not tag in self._tags:
             self._tags.append(tag.lower())
@@ -43,18 +50,24 @@ class ChronoTask:
         return f'Нет такого тега: {tag}'
 
     def set_start_time(self, start_time=None):
-        if start_time is None:
-            self._start_time = datetime.now().strftime('%x %X')
-        else:
-            self._start_time = start_time
+        self._start_time = datetime.now().strftime('%x %X')
+        if start_time is not None:
+            result = self._parse_known_time_formats(start_time)
+            if 'Ошибка' in result:
+                return result + f'\nВремя начала задачи установлено в: {self._start_time}'
+            else:
+                self._start_time = result
         return f'Успешно назначили новое время исполнения задачи: {self._start_time}'
 
     def set_stop_time(self, stop_time=None):
-        if stop_time is None:
-            self._stop_time = datetime.now().strftime('%x %X')
-        else:
-            self._stop_time = stop_time
-        return f'Успешно назначили новое время завершения задачи: {self._start_time}'
+        self._stop_time = None
+        if stop_time is not None:
+            result = self._parse_known_time_formats(stop_time)
+            if 'Ошибка' in result:
+                return result + f'\nВремя завершения задачи установлено в: {self._stop_time}'
+            else:
+                self._stop_time = result
+        return f'Успешно назначили новое время завершения задачи: {self._stop_time}'
 
     def to_dict(self):
         return {'Description': self._description,
@@ -65,6 +78,17 @@ class ChronoTask:
     @classmethod
     def from_dict(cls, d):
         return cls(d['Description'], d['Tags'], d['StartTime'], d['StopTime'])
+
+    def _parse_known_time_formats(self, time_string):
+        for time_format in TIME_FORMATS:
+            try:
+                today = datetime.today().strftime('%x')
+                time_string = datetime.strptime(time_string, time_format)
+                time_string = time_string.strftime('%X')
+                return ' '.join((today, time_string))
+            except ValueError:
+                continue
+        return 'Ошибка: формат времени должен быть ЧЧ:ММ'
 
     def _set_tags(self, tags=None):
         if tags is None:
@@ -135,7 +159,8 @@ class ChronoLogger:
             try:
                 now = datetime.now().strftime('%x %X')
                 task = self._tasks.pop(task_id)
-                task.set_stop_time(now)
+                if task.get_stop_time() is None:
+                    task.set_stop_time(now)
                 task_dict = task.to_dict()
                 with open(self._log_path, 'a') as log:
                     log.write(json.dumps(task_dict) + '\n')
