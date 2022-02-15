@@ -2,6 +2,7 @@ import json
 import atexit
 from datetime import datetime
 from pathlib import Path
+from .utils import reverse_readline
 
 FILEPATH = Path(__file__).absolute().parent.parent
 CUR_MONTH = datetime.today().date().replace(day=1).strftime('%Y-%m')
@@ -168,6 +169,13 @@ class ChronoLogger:
             except IndexError:
                 return f'Не существует задачи с таким индексом: {task_id}'
         return f'Список текущих задач пуст!'
+
+    def list_n_last_tasks(self, num_tasks=3):
+        reader = reverse_readline(self._log_path)
+        lines = [next(reader) for _ in range(int(num_tasks))]
+        contents = [json.loads(line) for line in lines]
+        tasks = [ChronoTask.from_dict(d) for d in contents]
+        return "\n\n".join([str(task) for task in tasks])
 
     def _cleanup(self):
         with open(self._buf_path, 'w') as f:

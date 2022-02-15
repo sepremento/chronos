@@ -18,6 +18,7 @@ STOP_TASK_REGEX = '^\.\s*(стоп|stop|с|s)(.*)'
 ADD_TAG_REGEX = '^\.\s*(тег добавить|tag add|тд|ta)\s*(\d*)(.*)'
 DEL_TAG_REGEX = '^\.\s*(тег удалить|tag delete|ту|td)\s*(\d*)(.*)'
 LIST_TASKS_REGEX = '^\.\s*$'
+LIST_LAST_TASKS_REGEX = '^\.\s*(l|л)\s*(\d*)'
 EDIT_DESC_REGEX = '^\.\s*(описание|о|description|m)\s*(\d*)(.*)'
 EDIT_TIME_REGEX = r'^\.\s*(в\b|t\b)\s*(\d?\b)\s*([^\,]*),?(.*)'
 
@@ -128,6 +129,14 @@ def edit_start_and_stop_time(client, message):
         if stop_time is not None:
             result = result.set_stop_time(stop_time)
             show_and_delete_notification(chat_id, result)
+
+@app.on_message(filter_me_chat_and_regex(LIST_LAST_TASKS_REGEX))
+def list_n_last_tasks(client, message):
+    chat_id = get_chat_id_and_delete_message(message)
+    task_match = re.match(LIST_LAST_TASKS_REGEX, message.text, re.I)
+    num_lines = task_match.group(2).strip() or 3
+    result = logger.list_n_last_tasks(num_lines)
+    show_and_delete_notification(chat_id, result)
 
 
 if __name__ == '__main__':
