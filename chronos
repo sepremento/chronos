@@ -87,8 +87,8 @@ def add_tag(client, message):
     tag = task_match.group(3).strip() or ''
     with ChronoLogger() as logger:
         result = logger.get_tasks(task_id)
-    if not isinstance(result, str):
-        result = result.add_tag(tag)
+        if not isinstance(result, str):
+            result = result.add_tag(tag)
     show_and_delete_notification(chat_id, result)
 
 
@@ -100,8 +100,8 @@ def add_tag(client, message):
     tag = task_match.group(3).strip() or ''
     with ChronoLogger() as logger:
         result = logger.get_tasks(task_id)
-    if not isinstance(result, str):
-        result = result.remove_tag(tag)
+        if not isinstance(result, str):
+            result = result.remove_tag(tag)
     show_and_delete_notification(chat_id, result)
 
 
@@ -113,10 +113,10 @@ def edit_description(client, message):
     description = task_match.group(3).strip() or ''
     with ChronoLogger() as logger:
         result = logger.get_tasks(task_id)
-    if not isinstance(result, str):
-        if description == '':
-            description = result.get_description()
-        result = result.set_description(description)
+        if not isinstance(result, str):
+            if description == '':
+                description = result.get_description()
+            result = result.set_description(description)
     show_and_delete_notification(chat_id, result)
 
 
@@ -129,13 +129,13 @@ def edit_start_and_stop_time(client, message):
     stop_time = task_match.group(4).strip() or None
     with ChronoLogger() as logger:
         result = logger.get_tasks(task_id)
-    if not isinstance(result, str):
-        if start_time is not None:
-            result = result.set_start_time(start_time)
-            show_and_delete_notification(chat_id, result)
-        if stop_time is not None:
-            result = result.set_stop_time(stop_time)
-            show_and_delete_notification(chat_id, result)
+        if not isinstance(result, str):
+            if start_time is not None:
+                result = result.set_start_time(start_time)
+                show_and_delete_notification(chat_id, result)
+            if stop_time is not None:
+                result = result.set_stop_time(stop_time)
+                show_and_delete_notification(chat_id, result)
 
 @app.on_message(filter_me_chat_and_regex(LIST_LAST_TASKS_REGEX))
 def list_n_last_tasks(client, message):
