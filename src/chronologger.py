@@ -115,6 +115,12 @@ class ChronoLogger:
         else:
             return "Задач нет!"
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, tb):
+        self._cleanup()
+
     def add_task(self, task):
         if len(self._tasks) < 3:
             self._tasks.append(task)
